@@ -5,6 +5,7 @@ import Hotel, { HotelType } from "../models/hotel";
 import mongoose from "mongoose";
 
 const storage = multer.memoryStorage();
+
 export const upload = multer({
   storage: storage,
   limits: {
@@ -25,7 +26,7 @@ export const createHotels = async (req: Request, res: Response) => {
       return res.url;
     });
 
-    console.log("uploadPromises ", uploadPromises);
+    // console.log("uploadPromises ", uploadPromises);
     const imageUrls = await Promise.all(uploadPromises);
     newHotel.imageUrls = imageUrls;
     newHotel.lastUpdated = new Date();
@@ -41,10 +42,22 @@ export const createHotels = async (req: Request, res: Response) => {
   }
 };
 
-export const getHotels = (req: Request, res: Response) => {
+export const getHotels = async (req: Request, res: Response) => {
   try {
-    const hotels = Hotel.find({ userId: req.userId });
+    //console.log(req.userId);
+    const hotels = await Hotel.find({ createrId: req.userId });
+    // console.log(hotels);
     res.status(200).json(hotels);
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const getHotelById = async (req: Request, res: Response) => {
+  const id = req.params.id.toString();
+
+  try {
+    const hotel = await Hotel.findOne({ _id: id, createrId: req.userId });
   } catch (error) {
     res.status(500).json({ message: "Something went wrong" });
   }

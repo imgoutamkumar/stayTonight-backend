@@ -30,8 +30,8 @@ app.use("/api/user", usersRoute);
 import hotelsRoute from "./routes/hotelsRoute";
 app.use("/api/hotel", hotelsRoute);
 
-app.listen(7000, () => {
-  console.log(`server is running on Port : 7000`);
+app.listen(process.env.PORT, () => {
+  console.log(`server is running on Port :${process.env.PORT}`);
   mongoose
     .connect(process.env.MONGODB_URL as string)
     .then(() => {

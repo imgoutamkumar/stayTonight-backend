@@ -3,6 +3,7 @@ import {
   createHotels,
   getHotels,
   upload,
+  getHotelById,
 } from "../controllers/hotelsController";
 import { verifyToken } from "../middlewares/auth";
 import { body } from "express-validator";
@@ -25,6 +26,6 @@ router.post(
 );
 
 router.get("/", verifyToken, getHotels);
-
+router.get("/:id", verifyToken, getHotelById);
 //module.exports = router;
 export default router;
