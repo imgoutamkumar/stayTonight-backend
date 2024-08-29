@@ -58,7 +58,106 @@ export const getHotelById = async (req: Request, res: Response) => {
 
   try {
     const hotel = await Hotel.findOne({ _id: id, createrId: req.userId });
+    res.status(200).json(hotel);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Something went wrong while fetching hotel by id" });
+  }
+};
+
+export const updateHotelById = async (req: Request, res: Response) => {
+  const id = req.params.id.toString();
+
+  try {
+    const updatedHotel: HotelType = req.body;
+    updatedHotel.lastUpdated = new Date();
+
+    const hotel = await Hotel.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        createrId: req.userId,
+      },
+      updatedHotel,
+      { new: true }
+    );
+    if (!hotel) {
+      return res.status(404).json({ message: "Hotel not found" });
+    }
+    const imageFiles = req.files as Express.Multer.File[];
+    const uploadPromises = imageFiles.map(async (image) => {
+      const b64 = Buffer.from(image.buffer).toString("base64");
+      let dataURI = "data:" + image.mimetype + ";base64," + b64;
+      const res = await cloudinary.uploader.upload(dataURI);
+      return res.url;
+    });
+
+    const imageUrls = await Promise.all(uploadPromises);
+    hotel.imageUrls = [...imageUrls, ...(updatedHotel.imageUrls || [])];
+
+    await hotel.save();
+    res.status(200).json(hotel);
   } catch (error) {
     res.status(500).json({ message: "Something went wrong" });
   }
+};
+
+export const searchHotels = async (req: Request, res: Response) => {
+  console.log("Search controller called");
+  const { destination, checkIn, checkOut, adultCount, childCount, page } =
+    req.query;
+  console.log(req.query);
+  const query = constructSearchQuery(req.query);
+  console.log(query);
+  try {
+    const numberOfDataPerPage = 10;
+    const pageNumber = parseInt(
+      req.query.page ? req.query.page.toString() : "1"
+    );
+    const skip = (pageNumber - 1) * numberOfDataPerPage;
+    const hotels = await Hotel.find(query)
+      .skip(skip)
+      .limit(numberOfDataPerPage);
+    const total = await Hotel.countDocuments();
+    const response = {
+      data: hotels,
+      pagination: {
+        total,
+        page: pageNumber,
+        pages: Math.ceil(total / numberOfDataPerPage),
+      },
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Service not working, Something went wrong" });
+  }
+};
+
+const constructSearchQuery = (queryParams: any) => {
+  let constructedQuery: any = {};
+
+  if (queryParams.destination) {
+    constructedQuery.$or = [
+      { city: new RegExp(queryParams.destination, "i") },
+      { state: new RegExp(queryParams.destination, "i") },
+      { country: new RegExp(queryParams.destination, "i") },
+    ];
+  }
+
+  if (queryParams.adultCount) {
+    constructedQuery.adultCount = {
+      $gte: parseInt(queryParams.adultCount),
+    };
+  }
+
+  if (queryParams.childCount) {
+    constructedQuery.childCount = {
+      $gte: parseInt(queryParams.childCount),
+    };
+  }
+
+  return constructedQuery;
 };

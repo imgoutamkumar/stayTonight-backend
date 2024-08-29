@@ -67,7 +67,8 @@ export const signIn = async (req: Request, res: Response) => {
       maxAge: 86400000,
     });
     return res.status(200).send({
-      message: "User registration success",
+      message: "User Authentication success",
+      toekn: token,
     });
   } catch (error) {
     return res.status(500).send({

@@ -4,6 +4,8 @@ import {
   getHotels,
   upload,
   getHotelById,
+  updateHotelById,
+  searchHotels,
 } from "../controllers/hotelsController";
 import { verifyToken } from "../middlewares/auth";
 import { body } from "express-validator";
@@ -25,7 +27,9 @@ router.post(
   createHotels
 );
 
-router.get("/", verifyToken, getHotels);
-router.get("/:id", verifyToken, getHotelById);
+router.get("/all", verifyToken, getHotels);
+router.get("/id/:id", verifyToken, getHotelById);
+router.put("/:id", upload.array("imageFiles", 8), verifyToken, updateHotelById);
+router.get("/search", searchHotels);
 //module.exports = router;
 export default router;
