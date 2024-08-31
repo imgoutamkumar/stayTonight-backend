@@ -4,6 +4,15 @@ import { v2 as cloudinary } from "cloudinary";
 import Hotel, { HotelType } from "../models/hotel";
 import mongoose from "mongoose";
 
+export type HotelSearchResponse = {
+  data: HotelType[];
+  pagination: {
+    total: number;
+    page: number;
+    pages: number;
+  };
+};
+
 const storage = multer.memoryStorage();
 
 export const upload = multer({
@@ -104,11 +113,26 @@ export const updateHotelById = async (req: Request, res: Response) => {
 
 export const searchHotels = async (req: Request, res: Response) => {
   console.log("Search controller called");
-  const { destination, checkIn, checkOut, adultCount, childCount, page } =
-    req.query;
-  console.log(req.query);
+
+  //console.log(req.query);
   const query = constructSearchQuery(req.query);
-  console.log(query);
+  //console.log(query);
+
+  let sortOptions = {};
+  switch (req.query.sortOptions) {
+    case "starRating":
+      sortOptions = {
+        starRating: -1,
+      };
+      break;
+    case "pricePerNightAsc":
+      sortOptions = { pricePerNight: 1 };
+      break;
+    case "pricePerNightDesc":
+      sortOptions = { pricePerNight: -1 };
+      break;
+  }
+
   try {
     const numberOfDataPerPage = 10;
     const pageNumber = parseInt(
@@ -116,10 +140,12 @@ export const searchHotels = async (req: Request, res: Response) => {
     );
     const skip = (pageNumber - 1) * numberOfDataPerPage;
     const hotels = await Hotel.find(query)
+      .sort(sortOptions)
       .skip(skip)
       .limit(numberOfDataPerPage);
-    const total = await Hotel.countDocuments();
-    const response = {
+    // const total = await Hotel.countDocuments();
+    const total = await Hotel.countDocuments(query);
+    const response: HotelSearchResponse = {
       data: hotels,
       pagination: {
         total,
@@ -127,7 +153,7 @@ export const searchHotels = async (req: Request, res: Response) => {
         pages: Math.ceil(total / numberOfDataPerPage),
       },
     };
-
+    // console.log(response);
     res.status(200).json(response);
   } catch (error) {
     res
@@ -156,6 +182,36 @@ const constructSearchQuery = (queryParams: any) => {
   if (queryParams.childCount) {
     constructedQuery.childCount = {
       $gte: parseInt(queryParams.childCount),
+    };
+  }
+
+  if (queryParams.facilities) {
+    constructedQuery.facilities = {
+      $all: Array.isArray(queryParams.facilities)
+        ? queryParams.facilities
+        : [queryParams.facilities],
+    };
+  }
+
+  if (queryParams.type) {
+    constructedQuery.type = {
+      $in: Array.isArray(queryParams.type)
+        ? queryParams.type
+        : [queryParams.type],
+    };
+  }
+
+  if (queryParams.stars) {
+    const starRating = Array.isArray(queryParams.stars)
+      ? queryParams.stars.map((star: string) => parseInt(star))
+      : parseInt(queryParams.stars);
+
+    constructedQuery.starRating = { $eq: starRating };
+  }
+
+  if (queryParams.maxPrice) {
+    constructedQuery.pricePerNight = {
+      $lte: parseInt(queryParams.maxPrice).toString(),
     };
   }
 
